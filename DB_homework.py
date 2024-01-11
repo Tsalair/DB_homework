@@ -3,8 +3,8 @@ import psycopg2
 def create_tables(cur):   
    
     cur.execute("""
-        DROP TABLE if exists client;
-        DROP TABLE if exists phone;                
+        DROP TABLE if exists phone;
+        DROP TABLE if exists client;                
     """)
 
     cur.execute("""
@@ -47,10 +47,30 @@ def add_phone(cur, id, phone):
     print(f'Phone {phone} added')
 
 
-def update_client(cur, id, new_name, new_surname, new_mail):
-    cur.execute("""
-        UPDATE client SET name=%s, surname=%s, mail=%s WHERE id=%s;
-    """, (new_name, new_surname, new_mail, id))
+def update_client(cur, id, new_name=None, new_surname=None, new_mail=None):
+    def d_dict():
+         return {'name': new_name, 'surname': new_surname, 'mail': new_mail}
+    
+    dc_dict = d_dict()
+
+    data_dict = {}
+
+    for key in dc_dict:
+        
+        if dc_dict[key] != None:
+            data_dict[key] = dc_dict[key]
+
+
+    data_list = []
+    for key in data_dict:
+        data_list.append((key + ' = %(' + key + ')s'))
+
+    data_st = 'UPDATE client SET ' + ' AND '.join(data_list) + 'WHERE id=%(id)s;'
+
+    data_dict['id'] = id
+
+    cur.execute(data_st, data_dict)
+
     print('Updated')
 
 
@@ -73,38 +93,28 @@ def delete_client(cur, id):
 
 
 def find_client(cur, name=None, surname=None, mail=None, phone=None):
-    if name != None:
-        cur.execute("""
-            SELECT c.id, c.name, c.surname, p.phone FROM client c
-            JOIN phone p on c.id = p.client_id
-            WHERE c.name=%s;
-        """,(name,))
-        return cur.fetchall()
 
-    elif surname != None:
-        cur.execute("""
-            SELECT c.id, c.name, c.surname, p.phone FROM client c
-            JOIN phone p on c.id = p.client_id
-            WHERE c.surname=%s;
-        """,(surname,))
-        return cur.fetchall()
+    def d_dict():
+         return {'name': name, 'surname': surname, 'mail': mail, 'phone': phone}
+    
+    dc_dict = d_dict()
 
-    elif mail != None:
-        cur.execute("""
-            SELECT c.id, c.name, c.surname, p.phone FROM client c
-            JOIN phone p on c.id = p.client_id
-            WHERE c.mail=%s;
-        """,(mail,))
-        return cur.fetchall()
+    data_dict = {}
 
-    elif phone != None:
-        cur.execute("""
-            SELECT c.id, c.name, c.surname, p.phone FROM client c
-            JOIN phone p on c.id = p.client_id
-            WHERE p.phone=%s;
-        """,(phone,))
-        return cur.fetchall()
+    for key in dc_dict:
+        
+        if dc_dict[key] != None:
+            data_dict[key] = dc_dict[key]
 
+
+    data_list = []
+    for key in data_dict:
+        data_list.append((key + ' = %(' + key + ')s'))
+
+    data_st = 'SELECT c.id, c.name, c.surname, p.phone FROM client c JOIN phone p on c.id = p.client_id WHERE ' + ' AND '.join(data_list) + ';'
+
+    cur.execute(data_st, data_dict)
+    return cur.fetchall()
 
 
 if __name__ == "__main__":
@@ -122,19 +132,19 @@ if __name__ == "__main__":
             for i in clients:
                 add_client(cur, i[0], i[1], i[2], i[3])
 
-            phones = [('Anna', 'Smith', '+6530769'), ('Tom', 'Skillton', '+03498794944')]
+            phones = [(1, '+6530769'), (3, '+03498794944')]
             for i in phones:
-                add_phone(cur, i[0], i[1], i[2])
+                add_phone(cur, i[0], i[1])
         
-            print(find_client(cur, surname='Smith'))
+            print(find_client(cur, surname='Smith', mail='anna@smith.com'))
             id_1 = find_client(cur, surname='Smith')[0][0]
             add_phone(cur, id_1, '+3979657463')
 
-            print(find_client(cur, phone='+03472888834'))
+            print(find_client(cur, name='Tom', phone='+03472888834'))
             id_2 =find_client(cur, phone='+03472888834')[0][0]
             add_phone(cur, id_2, '+70997867556')
 
-            update_client(cur, 2, 'Nikola', 'Dublew', 'snak@hgh.com')
+            update_client(cur, 2, new_mail='snak@hgh.com')
 
             delete_phone(cur, 3, '+03472888834')
 
